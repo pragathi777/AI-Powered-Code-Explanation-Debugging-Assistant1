@@ -8,6 +8,7 @@ import React from "react"; // Adding explicit React import
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import CodeAssistant from "./pages/CodeAssistant";
+import PdfAssistant from "./pages/PdfAssistant";
 
 // Create the client outside of the component
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/code-assistant" element={<CodeAssistant />} />
+              <Route path="/pdf-assistant" element={<PdfAssistant />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
