@@ -32,14 +32,15 @@ const ArrayVisualizer = () => {
   
   // Determine animation class
   const getAnimationClass = (element: ArrayElement, index: number) => {
-    const currentStep = steps[currentStep];
-    if (!currentStep) return '';
+    if (!steps[currentStep]) return '';
     
-    if (currentStep.comparison && (index === currentStep.comparison[0] || index === currentStep.comparison[1])) {
+    const currentStepData = steps[currentStep];
+    
+    if (currentStepData.comparison && (index === currentStepData.comparison[0] || index === currentStepData.comparison[1])) {
       return 'array-element-comparing';
     }
     
-    if (currentStep.swap && (index === currentStep.swap[0] || index === currentStep.swap[1])) {
+    if (currentStepData.swap && (index === currentStepData.swap[0] || index === currentStepData.swap[1])) {
       return 'array-element-swapping';
     }
     
