@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import React from "react"; // Adding explicit React import
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import CodeAssistant from "./pages/CodeAssistant";
 
 // Create the client outside of the component
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/code-assistant" element={<CodeAssistant />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
