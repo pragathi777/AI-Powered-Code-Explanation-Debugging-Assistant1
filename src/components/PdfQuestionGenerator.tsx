@@ -1,12 +1,23 @@
-
 import React, { useState, useEffect } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { InfoIcon, BookOpen, CheckCircle2, Lightbulb, RefreshCw } from "lucide-react";
+import { InfoIcon, BookOpen, CheckCircle2, Lightbulb, RefreshCw, Trophy, ThumbsUp, Star } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { 
+  TooltipProvider, 
+  Tooltip, 
+  TooltipTrigger, 
+  TooltipContent 
+} from "@/components/ui/tooltip";
+import { toast } from "@/components/ui/use-toast";
 
 interface PdfQuestionGeneratorProps {
   pdfContent: string;
@@ -25,6 +36,7 @@ const PdfQuestionGenerator: React.FC<PdfQuestionGeneratorProps> = ({ pdfContent 
   const [loading, setLoading] = useState<boolean>(false);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [showResults, setShowResults] = useState<boolean>(false);
+  const [showFeedback, setShowFeedback] = useState<boolean>(false);
 
   useEffect(() => {
     if (pdfContent) {
@@ -33,6 +45,7 @@ const PdfQuestionGenerator: React.FC<PdfQuestionGeneratorProps> = ({ pdfContent 
       setQuestions([]);
       setAnswers({});
       setShowResults(false);
+      setShowFeedback(false);
     }
   }, [pdfContent]);
 
@@ -40,8 +53,8 @@ const PdfQuestionGenerator: React.FC<PdfQuestionGeneratorProps> = ({ pdfContent 
     setLoading(true);
     setAnswers({});
     setShowResults(false);
+    setShowFeedback(false);
     
-    // Simulate API call to generate questions based on PDF content
     setTimeout(() => {
       const generatedQuestions: Question[] = [
         {
@@ -108,6 +121,17 @@ const PdfQuestionGenerator: React.FC<PdfQuestionGeneratorProps> = ({ pdfContent 
 
   const handleSubmitQuiz = () => {
     setShowResults(true);
+    
+    const score = getScore();
+    const [correct, total] = score.split('/').map(num => parseInt(num));
+    
+    if (correct / total >= 0.75) {
+      setShowFeedback(true);
+      toast({
+        title: "Great job!",
+        description: `You scored ${score} - that's excellent performance!`,
+      });
+    }
   };
 
   const handleGenerateNew = () => {
@@ -122,6 +146,21 @@ const PdfQuestionGenerator: React.FC<PdfQuestionGeneratorProps> = ({ pdfContent 
       }
     });
     return `${correct}/${questions.length}`;
+  };
+
+  const getFeedbackMessage = () => {
+    const [correct, total] = getScore().split('/').map(num => parseInt(num));
+    const percentage = (correct / total) * 100;
+    
+    if (percentage === 100) {
+      return "Perfect score! You've mastered this material completely!";
+    } else if (percentage >= 90) {
+      return "Excellent work! You have a very strong understanding of the concepts!";
+    } else if (percentage >= 75) {
+      return "Great job! You're showing solid comprehension of the material!";
+    } else {
+      return "";
+    }
   };
 
   if (!pdfContent) {
@@ -168,8 +207,41 @@ const PdfQuestionGenerator: React.FC<PdfQuestionGeneratorProps> = ({ pdfContent 
           <Alert className="bg-green-50 border-green-200">
             <CheckCircle2 className="h-4 w-4 text-green-500" />
             <AlertTitle>Quiz Results</AlertTitle>
-            <AlertDescription>
-              You scored {getScore()} correct answers!
+            <AlertDescription className="flex justify-between items-center">
+              <span>You scored {getScore()} correct answers!</span>
+              
+              {showFeedback && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="ml-2 bg-green-100 hover:bg-green-200 border-green-300">
+                            <Trophy className="h-4 w-4 text-yellow-500 mr-1" />
+                            View Feedback
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-4 bg-green-50 border-green-200">
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-green-700 font-medium">
+                              <Star className="h-5 w-5 text-yellow-500" />
+                              <h4>Excellent Performance!</h4>
+                            </div>
+                            <p className="text-sm text-green-700">{getFeedbackMessage()}</p>
+                            <div className="flex gap-2 pt-2">
+                              <ThumbsUp className="h-5 w-5 text-green-600" />
+                              <p className="text-sm text-green-700">Your understanding of these concepts will be valuable for advanced topics.</p>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Click for detailed feedback!</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </AlertDescription>
           </Alert>
 
