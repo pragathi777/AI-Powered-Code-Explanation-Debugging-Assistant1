@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import PdfUploader from "@/components/PdfUploader";
 import PdfQuestionGenerator from "@/components/PdfQuestionGenerator";
@@ -16,11 +16,23 @@ import {
   Sparkles
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getOpenAIKey } from "@/utils/openaiService";
 
 const PdfAssistant = () => {
   const [pdfContent, setPdfContent] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const hasApiKey = !!getOpenAIKey();
+    if (!hasApiKey) {
+      toast({
+        title: "OpenAI API Key Required",
+        description: "Please add your OpenAI API key in the settings to generate AI-powered questions and answers.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
 
   const handlePdfContent = (content: string) => {
     setPdfContent(content);

@@ -66,6 +66,99 @@ export const getAIAnswer = async (prompt: string): Promise<string> => {
   }
 };
 
+export const generateQuestions = async (pdfContent: string, numberOfQuestions: number = 4): Promise<Array<{id: string, question: string, options: string[], correctAnswer: number, explanation: string}>> => {
+  const key = getOpenAIKey();
+  
+  if (!key) {
+    throw new Error("API key not set");
+  }
+  
+  try {
+    const prompt = `
+Generate ${numberOfQuestions} multiple-choice questions based on the following content. 
+Make sure the questions test different aspects of the material and have varying difficulty levels.
+
+PDF Content:
+"""
+${pdfContent}
+"""
+
+For each question:
+1. Create a clear, concise question
+2. Provide 4 possible answers (only one should be correct)
+3. Indicate which answer is correct (0-indexed, from 0 to 3)
+4. Include a brief explanation of why the correct answer is right
+
+Respond with ONLY a JSON array where each question has:
+- id: a unique string ID (q1, q2, etc.)
+- question: the question text
+- options: array of 4 possible answers
+- correctAnswer: number from 0-3 indicating the correct option index
+- explanation: brief explanation of the correct answer
+
+Example format:
+[
+  {
+    "id": "q1",
+    "question": "What is X?",
+    "options": ["A", "B", "C", "D"],
+    "correctAnswer": 2,
+    "explanation": "C is correct because..."
+  }
+]
+`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are an educational content creator who creates thoughtful, accurate multiple-choice questions to test understanding of academic material."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.5,
+        max_tokens: 2000
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Failed to generate questions");
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    // Parse the JSON response
+    try {
+      // Handle case where the AI might include markdown code blocks or extra text
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      
+      // Fallback to trying to parse the whole content
+      return JSON.parse(content);
+    } catch (parseError) {
+      console.error("Error parsing JSON from AI response:", parseError);
+      throw new Error("Failed to parse questions from AI response");
+    }
+  } catch (error) {
+    console.error("Error generating questions:", error);
+    throw error;
+  }
+};
+
 export const explainCode = async (code: string, language: string): Promise<Array<{lineNumber: number, code: string, explanation: string}>> => {
   const key = getOpenAIKey();
   
