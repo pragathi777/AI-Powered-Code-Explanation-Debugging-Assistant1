@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import CodeEditor from "@/components/CodeEditor";
 import CodeExplanation from "@/components/CodeExplanation";
@@ -17,14 +17,28 @@ import {
   Code2, 
   BugPlay, 
   ClipboardCheck,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from "lucide-react";
+import { getOpenAIKey } from "@/utils/openaiService";
 
 const CodeAssistant = () => {
   const [code, setCode] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [language, setLanguage] = useState<string>("javascript");
+  const [shouldAnalyze, setShouldAnalyze] = useState<boolean>(false);
   const { toast } = useToast();
+
+  // Check for API key on component mount
+  useEffect(() => {
+    const hasApiKey = !!getOpenAIKey();
+    if (hasApiKey) {
+      toast({
+        title: "OpenAI API Key Detected",
+        description: "AI-powered code analysis is ready to use.",
+      });
+    }
+  }, [toast]);
 
   const handleAnalyze = () => {
     if (!code.trim()) {
@@ -37,14 +51,16 @@ const CodeAssistant = () => {
     }
 
     setIsAnalyzing(true);
-    // Simulate processing delay
+    setShouldAnalyze(true);
+    
+    // Set a brief delay to allow UI to update
     setTimeout(() => {
       setIsAnalyzing(false);
       toast({
-        title: "Analysis Complete",
-        description: "Your code has been analyzed successfully.",
+        title: "Analysis Ready",
+        description: "AI is ready to explain your code.",
       });
-    }, 1500);
+    }, 1000);
   };
 
   return (
@@ -80,7 +96,10 @@ const CodeAssistant = () => {
                     Analyzing...
                   </>
                 ) : (
-                  "Analyze Code"
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Analyze Code
+                  </>
                 )}
               </Button>
             </div>

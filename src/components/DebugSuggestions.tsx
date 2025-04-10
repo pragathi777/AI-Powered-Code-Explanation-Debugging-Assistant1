@@ -1,8 +1,11 @@
 
 import React, { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { InfoIcon, ZapIcon, AlertTriangleIcon, XCircleIcon } from "lucide-react";
+import { InfoIcon, ZapIcon, AlertTriangleIcon, XCircleIcon, Bug, RefreshCw } from "lucide-react";
+import { debugCode, getOpenAIKey } from "@/utils/openaiService";
+import ApiKeySetup from "@/components/pdf-ai/ApiKeySetup";
 
 interface DebugSuggestionsProps {
   code: string;
@@ -19,82 +22,63 @@ interface DebugIssue {
 const DebugSuggestions: React.FC<DebugSuggestionsProps> = ({ code, language }) => {
   const [issues, setIssues] = useState<DebugIssue[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isKeySet, setIsKeySet] = useState<boolean>(false);
 
   useEffect(() => {
-    if (code.trim()) {
-      findIssues();
-    } else {
-      setIssues([]);
-    }
+    const checkApiKey = () => {
+      const hasKey = !!getOpenAIKey();
+      setIsKeySet(hasKey);
+      return hasKey;
+    };
+
+    checkApiKey();
+  }, []);
+
+  useEffect(() => {
+    // Clear issues when code changes
+    setIssues([]);
+    setError(null);
   }, [code, language]);
 
-  const findIssues = () => {
-    setLoading(true);
+  const findIssues = async () => {
+    if (!code.trim()) return;
     
-    // Simulate API call to get debugging suggestions
-    setTimeout(() => {
-      const mockIssues: DebugIssue[] = [];
-      const codeLines = code.split("\n");
-      
-      // Simple pattern matching for common issues
-      codeLines.forEach((line, index) => {
-        const lineNumber = index + 1;
-        
-        // Check for missing semicolons (JavaScript/TypeScript)
-        if ((language === "javascript" || language === "typescript") && 
-            !line.trim().endsWith(";") && 
-            !line.trim().endsWith("{") && 
-            !line.trim().endsWith("}") && 
-            !line.trim().startsWith("import") &&
-            !line.trim().startsWith("//") &&
-            line.trim().length > 0) {
-          mockIssues.push({
-            type: "warning",
-            lineNumber,
-            message: "Missing semicolon",
-            suggestion: "Add a semicolon at the end of this line",
-          });
-        }
-        
-        // Check for console.log statements
-        if (line.includes("console.log")) {
-          mockIssues.push({
-            type: "suggestion",
-            lineNumber,
-            message: "Debugging console.log statement found",
-            suggestion: "Consider removing console.log statements before deploying to production",
-          });
-        }
-        
-        // Check for potential undefined variables (very basic check)
-        if ((line.includes("=") || line.includes("(")) && 
-            !(line.includes("var ") || line.includes("let ") || line.includes("const "))) {
-          const parts = line.split(/[=( ]/);
-          if (parts.length > 1 && !['if', 'for', 'while', 'switch', 'function', 'return'].includes(parts[0].trim())) {
-            mockIssues.push({
-              type: "warning",
-              lineNumber,
-              message: "Potential use of undeclared variable",
-              suggestion: "Make sure all variables are properly declared with var, let, or const",
-            });
-          }
-        }
-        
-        // Add a mock critical error for demonstration purposes if the code is long enough
-        if (codeLines.length > 5 && index === Math.floor(codeLines.length / 2)) {
-          mockIssues.push({
-            type: "error",
-            lineNumber,
-            message: "Uncaught TypeError: Cannot read property of undefined",
-            suggestion: "Check that all objects are properly initialized before accessing their properties",
-          });
-        }
-      });
-      
-      setIssues(mockIssues);
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const aiIssues = await debugCode(code, language);
+      setIssues(aiIssues);
+    } catch (err) {
+      console.error("Error getting AI debug suggestions:", err);
+      setError(err instanceof Error ? err.message : "Failed to analyze code");
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
+
+  const handleKeySet = (isSet: boolean) => {
+    setIsKeySet(isSet);
+    if (isSet && code.trim()) {
+      findIssues();
+    }
+  };
+
+  if (!isKeySet) {
+    return (
+      <div className="space-y-4">
+        <Alert>
+          <InfoIcon className="h-4 w-4" />
+          <AlertTitle>OpenAI API Key Required</AlertTitle>
+          <AlertDescription>
+            To get AI-powered debugging suggestions, please set your OpenAI API key.
+          </AlertDescription>
+        </Alert>
+        <ApiKeySetup onKeySet={handleKeySet} />
+      </div>
+    );
+  }
 
   if (!code.trim()) {
     return (
@@ -102,23 +86,75 @@ const DebugSuggestions: React.FC<DebugSuggestionsProps> = ({ code, language }) =
         <InfoIcon className="h-4 w-4" />
         <AlertTitle>No Code to Debug</AlertTitle>
         <AlertDescription>
-          Enter some code in the editor and click "Analyze Code" to get debugging suggestions.
+          Enter some code in the editor and click "Analyze Code" to get AI-powered debugging suggestions.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <InfoIcon className="h-4 w-4" />
+        <AlertTitle>Error Analyzing Code</AlertTitle>
+        <AlertDescription>
+          {error}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={findIssues} 
+            className="mt-2"
+          >
+            Try Again
+          </Button>
         </AlertDescription>
       </Alert>
     );
   }
 
   if (loading) {
-    return <div className="p-4 text-center">Analyzing your code for issues...</div>;
+    return (
+      <div className="p-4 text-center space-y-2">
+        <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary" />
+        <p>AI is analyzing your code for issues...</p>
+      </div>
+    );
   }
 
-  if (issues.length === 0) {
+  if (issues.length === 0 && !loading && !error) {
+    if (code.trim() && !loading) {
+      return (
+        <div className="space-y-4">
+          <Alert className="bg-green-50 border-green-200">
+            <ZapIcon className="h-4 w-4 text-green-500" />
+            <AlertTitle>Ready to Analyze</AlertTitle>
+            <AlertDescription>
+              Click the button below to check your code for potential issues.
+            </AlertDescription>
+          </Alert>
+          <Button onClick={findIssues} className="w-full">
+            <Bug className="mr-2 h-4 w-4" />
+            Debug My Code
+          </Button>
+        </div>
+      );
+    }
+
     return (
       <Alert className="bg-green-50 border-green-200">
         <ZapIcon className="h-4 w-4 text-green-500" />
         <AlertTitle>No Issues Found</AlertTitle>
         <AlertDescription>
           Your code looks good! No obvious issues were detected.
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={findIssues} 
+            className="ml-2"
+          >
+            <RefreshCw className="mr-2 h-3 w-3" />
+            Check Again
+          </Button>
         </AlertDescription>
       </Alert>
     );
@@ -126,7 +162,13 @@ const DebugSuggestions: React.FC<DebugSuggestionsProps> = ({ code, language }) =
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium">Found {issues.length} Potential Issues</h3>
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Found {issues.length} Potential Issues</h3>
+        <Button variant="outline" size="sm" onClick={findIssues}>
+          <RefreshCw className="mr-2 h-3 w-3" />
+          Refresh
+        </Button>
+      </div>
       <div className="space-y-2">
         {issues.map((issue, index) => (
           <Card key={index} className={
