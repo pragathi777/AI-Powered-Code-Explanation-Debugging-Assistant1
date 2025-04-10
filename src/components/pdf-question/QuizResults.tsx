@@ -2,7 +2,7 @@
 import React from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Trophy, ThumbsUp, Star } from "lucide-react";
+import { CheckCircle2, Trophy, ThumbsUp, Star, CircleCheck } from "lucide-react";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -17,12 +17,47 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   showFeedback, 
   getFeedbackMessage 
 }) => {
+  // Parse the score to calculate percentage
+  const [correct, total] = score.split('/').map(num => parseInt(num));
+  const percentage = (correct / total) * 100;
+  
+  // Get appropriate comment based on score percentage
+  const getScoreComment = () => {
+    if (percentage === 100) {
+      return "Perfect! Outstanding work!";
+    } else if (percentage >= 90) {
+      return "Excellent job!";
+    } else if (percentage >= 75) {
+      return "Great work!";
+    } else if (percentage >= 60) {
+      return "Good effort!";
+    } else if (percentage >= 40) {
+      return "Keep practicing!";
+    } else {
+      return "You can do better!";
+    }
+  };
+  
+  // Get the appropriate icon based on score percentage
+  const getScoreIcon = () => {
+    if (percentage >= 75) {
+      return <CircleCheck className="h-5 w-5 text-green-600 mr-1" />;
+    } else {
+      return <ThumbsUp className="h-5 w-5 text-yellow-600 mr-1" />;
+    }
+  };
+
   return (
     <Alert className="bg-green-50 border-green-200">
       <CheckCircle2 className="h-4 w-4 text-green-500" />
       <AlertTitle>Quiz Results</AlertTitle>
       <AlertDescription className="flex justify-between items-center">
-        <span>You scored {score} correct answers!</span>
+        <div className="flex items-center gap-2">
+          <span>You scored {score} correct answers!</span>
+          <span className="flex items-center text-sm font-medium px-2 py-1 rounded-full bg-green-100 text-green-800">
+            {getScoreIcon()} {getScoreComment()}
+          </span>
+        </div>
         
         {showFeedback && (
           <TooltipProvider>
